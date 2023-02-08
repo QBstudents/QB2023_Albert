@@ -46,6 +46,7 @@ rm(list = ls())
 getwd()
 library(vegan)
 library(ade4)
+options(repos = list(CRAN="http://cran.rstudio.com/"))
 ```
 
 ## 2) LOADING DATA
@@ -73,36 +74,23 @@ fish <- fish[-8,]
 quality <- c(rep("HQ", 13), rep("MQ", 5), rep("LQ", 6), rep("MQ", 5))
 
 #run PERMANOVA with adonis function
-adonis(fish ~ quality, method = "bray", permutations = 999)
-
-# Terms added sequentially (first to last)
-# 
-#           Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-# quality    2    3.0947 1.54733   10.97 0.45765  0.001 ***
-# Residuals 26    3.6674 0.14105         0.54235           
-# Total     28    6.7621                 1.00000           
-# ---
-# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+#adonis(fish ~ quality, method = "bray", permutations = 999)
 
 install.packages("indicspecies")
 library(indicspecies)
 #species-site group associations
 indval <- multipatt(fish, cluster = quality, func = "IndVal.g", control = how(nperm = 999))
-summary(indval)
-
+#summary(indval)
 
 fish.rel <- decostand(fish, method = "total")
 phi <- multipatt(fish.rel, cluster = quality, func = "r.g", control = how(nperm = 999))
-summary(phi)
-
+#summary(phi)
 ```
 
 ***Question 1***: Based on the PERMANOVA, IndVal, and phi coefficient analyses, what did you learn about the relationship between habitat quality and the fish species composition?
 Are the different analyses consistent with one another and do they agree with the visualizations (heat maps, cluster dendograms, ordinations) that you created?
 
-> ***Answer 1***: 
-
-
+> ***Answer 1***: Working through these three analyses helps illustrate the story of habitat quality and fish species in the Doubs River. The PERMANOVA suggests that quality is a significant predictor, and then the IndVal points to groups of species with scores close to 1-- suggesting species are a strong indicator of that respective quality site. Finally, the phi coefficient shows habitat preferences based on quality. These analyses support the initial visualizations in that there were species clusters forming (ordination) and similarities appearing (heat maps/dendograms). 
 ### B.  Multivariate Procedures for Continuous Designs
 
 ### i.  Mantel Test
@@ -118,13 +106,12 @@ env.dist <- vegdist(scale(doubs$env[-8,]),method = "euclid")
 
 #mantel test
 mantel(fish.dist,env.dist)
-
 ```
 
 ***Question 2***: What do the results from our Mantel test suggest about fish diversity and stream environmental conditions? 
 How does this relate to your hypothesis about stream quality influencing fish communities?
 
-> ***Answer 2***:  
+> ***Answer 2***: The results from the Mantel test suggest there is a positive correlation between fish diversity and stream conditions. If there is a correlation between these two variables, that suggests stream quality should have some influence fish community composition. 
 
 ### ii.  Constrained Ordination
 In the R code chunk below, do the following:  
@@ -202,17 +189,11 @@ axis(side = 3, lwd.ticks = 2, cex.axis = 1.2, las = 1, col = "red", lwd = 2.2,
      at = pretty(range(vectors[,1]))* 2, labels = pretty(range(vectors[, 1])))
 axis(side = 4, lwd.ticks = 2, cex.axis = 1.2, las = 1, col = "red", lwd = 2.2,
      at = pretty(range(vectors[, 2])) * 2, labels = pretty(range(vectors[, 2])))
-
-
-
-
-
-
 ```
 
 ***Question 3***: Based on the constrained ordination, what are the environmental variables (or groups of correlated variables) that seem to be contributing to variation in fish community structure?
 
-> ***Answer 3***: 
+> ***Answer 3***: The environmental variables that contribute to the variation in fish community are dissolved oxygen, biological oxygen demand, and nitrate concentration. 
 
 ### iii. Variation Partitioning
 In the code chunk below,   
@@ -277,13 +258,11 @@ plot(doubs.varpart)
 text(1,0.25, "Space")
 text(0, 0.25, "Env")
 mtext("Variation Partitioning of\nDoubs Fish Diversity", side = 3, line = -3)
-
-
 ```
 
 ***Question 4***: Interpret the variation partitioning results.   
 
-> ***Answer 4***: 
+> ***Answer 4*** : This diagram provides that 13% of the variation in the fish community is explained by the environment alone, 24% by space alone, and 37% by space and environment, simultaneously. 
 
 ## SYNTHESIS
 
@@ -291,3 +270,96 @@ Load the dataset from that you and your partner are using for the team project.
 Use one of the hypothesis-testing tools introduced in the beta diversity module. 
 Interpret the findings of your data with respect to principles of biodiversity. 
 
+```{r}
+library(readr)
+library(ggplot2)
+library(tidyverse)
+library(plyr)
+
+#import data
+zoopfield <- read_csv("zoopfield_2009.csv")
+
+#check structure and change lake names to numeric values
+#str(zoopfield)
+zoopfield$Lake_Name <- revalue(zoopfield$Lake_Name, c("Airline" ="1", "Beaver Dam" ="2", "Beaver dam" ="2", "Benefiel" ="3", "Canvasback" = "4", "Dogwood" = "5", "Downing" = "6", "Gambill" = "7", "Goodman" = "8", "Goose" = "9", "Hale" = "10", "Island" = "11", "Long" = "12", "Mayfield" = "13", "Midland" = "14", "Pump" = "15", "Scott" = "16", "T-Lake" = "17","T-lake"="17", "Todd" = "18", "University" ="19", "university" ="19", "Willow" = "20", "Wampler" ="21", "Walnut" = "22", "Trout" = "23", "Tree" = "24", "Sycamore" = "25", "Star" = "26", "Spencer" = "27", "South Lake" = "28", "Shouel West" = "29", "Shouel East" = "30", "Shop" = "31", "Shake1" = "32", "Shake 1" = "32", "Shake 2" ="33", "Redbud" = "34", "Narrow" = "35", "Lonnie" = "36", "Long-Hillenbrand" = "37", "Horseshoe" = "38", "Hackberry"="39", "Giluore" ="40", "Front"="41","Frank"="42","Crystal"="43","Corky"="44","Clear"="45","Chapel"="46"))
+zoopfield$Lake_Name<- as.numeric(as.character(zoopfield$Lake_Name))
+
+
+#subsetting data into a data frame with lake name, zooplankton species, and environmental characteristics
+zoopwork <- zoopfield[, c(1, 37:49, 73:88)]
+
+#aggregating all rounds for a lake (taking sum of species and environmental characteristics)
+zoopagg <- zoopwork %>%
+  group_by(Lake_Name)%>%
+  summarize_all(sum, na.rm = TRUE)
+
+#creating vectors for the factors to test hypothesis
+species <- as.matrix(zoopagg[, c(2:14)])
+env.lakes <- as.matrix(zoopagg[, c(15:30)])
+
+library(vegan)
+library(ade4)
+#PERMANOVA
+adonis2(species ~ env.lakes, method = "bray", permutations = 999)
+
+#bray-curtis dissimilarity
+zoop.db <- vegdist(species, method = "bray", na.rm = TRUE)
+
+#CONSTRAINED ORDINATION PLOT
+zoop.dbrda <- dbrda(zoop.db ~ ., as.data.frame(env.lakes))
+ordiplot(zoop.dbrda)
+
+#model only the intercept
+zoop.dbrda.mod0 <- dbrda(zoop.db ~ 1, as.data.frame(env.lakes))
+ordiplot(zoop.dbrda.mod0)
+
+#model full model, with all explanatory variables
+zoop.dbrda.mod1 <- dbrda(zoop.db ~ ., as.data.frame(env.lakes))
+
+#all combinations of explanatory variables in model-- function returns model with lowest AIC value
+zoop.dbrda <- ordiR2step(zoop.dbrda.mod0, zoop.dbrda.mod1, perm.max = 200)
+
+#which model was selected
+zoop.dbrda$call
+zoop.dbrda$anova
+ordiplot(zoop.dbrda)
+
+#calculate explained variation
+dbrda.explainvar1 <- round(zoop.dbrda$CCA$eig[1] / sum(c(zoop.dbrda$CCA$eig, zoop.dbrda$CA$eig)), 3) * 100
+dbrda.explainvar2 <- round(zoop.dbrda$CCA$eig[2] / sum(c(zoop.dbrda$CCA$eig, zoop.dbrda$CA$eig)), 3) * 100
+
+#define plot parameters
+par(mar = c(5, 5, 4, 4) + 0.1)
+
+#initiate plot
+plot(scores(zoop.dbrda, display = "wa"), xlim = c(-2.0, 2.0),
+     ylim = c(-2.0, 2.0), xlab = paste("dbRDA 1 (", dbrda.explainvar1, "%)",
+                                       sep = ""), ylab = paste("dbRDA 2 (", dbrda.explainvar2, "%)", sep = ""),
+     pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
+
+#add axes
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
+
+#add points and labels
+points(scores(zoop.dbrda, display = "wa"),
+       pch = 19, cex = 3, bg = "gray", col = "gray")
+text(scores(zoop.dbrda, display = "wa"),
+     labels = row.names(scores(zoop.dbrda, display = "wa")))
+
+#add environmental vectors
+vectors <- scores(zoop.dbrda, display = "bp")
+#row.names(vectors) <- rownames(vectors)
+
+arrows(0, 0, vectors[,1], vectors[,2],
+       lwd = 2, lty = 1, length = 0.2, col = "red")
+text(vectors[,1], vectors[,2], pos = 3,
+     labels = row.names(vectors))
+axis(side = 3, lwd.ticks = 2, cex.axis = 1.2, las = 1, col = "red", lwd = 2.2,
+     at = pretty(range(vectors[,1]))* 2, labels = pretty(range(vectors[, 1])))
+axis(side = 4, lwd.ticks = 2, cex.axis = 1.2, las = 1, col = "red", lwd = 2.2,
+     at = pretty(range(vectors[, 2])) * 2, labels = pretty(range(vectors[, 2])))
+
+```
