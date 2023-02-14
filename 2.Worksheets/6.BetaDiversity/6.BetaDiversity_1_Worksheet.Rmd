@@ -380,6 +380,7 @@ Use one of the tools introduced in the beta diversity module to visualize your d
 Describe any interesting patterns and identify a hypothesis is relevant to the principles of biodiversity. 
 ```{r}
 getwd()
+
 require(plyr)
 require(tidyverse)
 library(readr)

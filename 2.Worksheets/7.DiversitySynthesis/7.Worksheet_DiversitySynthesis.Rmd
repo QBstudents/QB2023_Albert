@@ -1,6 +1,6 @@
 ---
 title: '7\. Worksheet: Diversity Synthesis'
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
+author: "Lauren Albert; Z620: Quantitative Biodiversity, Indiana University"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 geometry: margin=2.54cm
@@ -72,6 +72,63 @@ In smaller groups, take 15 minutes to brainstorm questions, code, statistical te
 **Answer 1:** Use the space below to generate a rarefaction curve/sample coverage based on the data we collected in class for each community. Make sure to annotate your code using # symbols so others (including instructors) understand what you have done and why you have done it. 
 
 ```{r}
+#clearing environment, setting wd, loading packages
+rm(list = ls())
+getwd()
+
+library(vegan)
+
+#import data
+gummy <- read.csv("QB Data Wrangling Lab SP23.csv")
+#remove NAs and subset out into site by species matrix
+gummy <- na.omit(gummy)
+gummy <- gummy[,3:32]
+
+#need to change all columns from integer to numeric 
+gummy[1:30] = lapply(gummy[1:30], FUN = function(y){as.numeric(y)})
+
+#subset by community A and community B 
+gummyA <- gummy[1:4,]
+gummyB <- gummy[5:8,]
+
+#write a function to calculate observed richness
+S.obs <- function(x =""){
+rowSums(x > 0) * 1 
+}
+
+#calculate observed richness of each community
+S.obs(gummyA)
+S.obs(gummyB)
+
+#determine size of the smallest sample in each community
+min.A <- min(rowSums(gummyA))
+min.B <- min(rowSums(gummyB))
+
+#use rarefy function to rarefy each community to this level
+A.rarefy <- rarefy(x = gummyA, sample = min.A, se = TRUE)
+B.rarefy <- rarefy(x = gummyB, sample = min.B, se = TRUE)
+
+#plot rarefaction curve and add a 1:1 line
+#Community A
+rarecurveA <- rarecurve(x = gummyA, step = 20, col = "purple", cex = 0.6, las = 1)
+abline(0, 1, col = 'red')
+text(1500, 1500, "1:1", pos = 2, col = 'red')
+
+#Community B 
+rarecurveB <- rarecurve(x = gummyB, step = 20, col = "green", cex = 0.6, las = 1)
+abline(0, 1, col = 'orange')
+text(1500, 1500, "1:1", pos = 2, col = 'orange')
+
+
+#Calculate coverage for each community 
+#function for Good's Coverage 
+GoodCoverage <- function(x = ""){
+  1 - (rowSums(x == 1)/rowSums(x))
+}
+
+GoodCoverage(gummyA)
+GoodCoverage(gummyB)
+
 ```
 
 
@@ -84,14 +141,65 @@ What is the variation among the samples in your group and between the communitie
 **Answer 2a - Analysis:** Use the space below for code that is being used to analyze your data and test your hypotheses on your chosen alpha diversity tool. Make sure to annotate your code using # symbols so others (including instructors) understand what you have done and why you have done it.
 
 ```{r}
+#writing function to calculate Chao 1 
+chao1 <- function(x = ""){
+  S.obs(x) + (sum(x == 1)^2) / (2 * sum(x == 2))
+  
+}
+
+#using chao1 because max abundance of a species is 16, ACE places threshold at 10
+#calculate richness within each site in community A 
+communityAchao <- chao1(gummyA)
+
+chao1(gummyA[1,])
+chao1(gummyA[2,])
+chao1(gummyA[3,])
+chao1(gummyA[4,])
+
+#calculate richness within each site in Community B
+communityBchao <- chao1(gummyB)
+chao1(gummyB[1,])
+chao1(gummyB[2,])
+chao1(gummyB[3,])
+chao1(gummyB[4,])
+
+#writing function to calculate Shannon diversity
+ShanH <- function(x = ""){
+  H = 0
+  for (n_i in x){
+    if(n_i >0){
+      p = n_i / sum(x)
+      H = H - p*log(p)
+    }
+  }
+  return(H)
+}
+
+#calculating Shannon diversity at the four sites within community A 
+
+ShanH(gummyA[1,])
+ShanH(gummyA[2,])
+ShanH(gummyA[3,])
+ShanH(gummyA[4,])
+
+
+
+ShanH(gummyB[1,])
+ShanH(gummyB[2,])
+ShanH(gummyB[3,])
+ShanH(gummyB[4,])
+
+
 ```
 
 **Answer 2b - Plot:** With your analysis, create one (and only one, although it can have multiple panels) *publication-quality* figure.
 
 ```{r}
+boxplot(communityAchao, communityBchao, xlab = "community", ylab = "chao1 index")
 ```
 
 **Answer 2c - Interpret results:** Write an informative yet succinct (~5 sentences) caption that creates a "stand-alone" figure. Take a peek at figures and figure captions in a paper published in your favorite journal for inspiration.
+>A boxplot describing the Chao1 index of community A and community B. Within site chao1 indexes (not shown) demonstrate that sites in community B had more species with high abundance compared to community A, which had fewer species with high abundance (more singletons and doubletons). Overall, the metric of alpha diversity suggest community B had greater diversity than community A when estimating the number of singleton and doubletons in the community. 
 
 
 ### 3) Beta diversity
@@ -103,14 +211,67 @@ Can you detect compositional differences between each source community sampled?
 **Answer 3a - Analysis:** Use the space below for code that is being used to analyze your data and test your hypotheses on your chosen beta diversity tool. Make sure to annotate your code using # symbols so others (including instructors) understand what you have done and why you have done it.
 
 ```{r}
+library(lattice)
+
+#calculating Bray-Curtis dissimilarity
+gummy.db <- vegdist(gummy, method = "bray")
+
+levelplot(as.matrix(gummy.db), aspect = "iso", xlab = "classroom sites", ylab = "classroom sites", scales = list(cex = 0.5), main = "Bray-Curtis distance")
+
+#Creating PCoA plot
+#first perform a Principal Coordinates Analysis to visualize beta-diversity
+gummy.pcoa <- cmdscale(gummy.db, eig = TRUE, k = 3)
+
+#then calculate the variation explained by the first three axes in your ordination
+explainvar1 <- round(gummy.pcoa$eig[1] / sum(gummy.pcoa$eig), 3) * 100
+explainvar2 <- round(gummy.pcoa$eig[2] / sum(gummy.pcoa$eig), 3) * 100
+explainvar3 <- round(gummy.pcoa$eig[3] / sum(gummy.pcoa$eig), 3) * 100 
+sum.eig <- sum(explainvar1, explainvar2, explainvar3)
+
+par(mar = c(5,5,1,2) + 0.1)
+
+plot(gummy.pcoa$point[ ,1], gummy.pcoa$points[ ,2], ylim = c(-0.4, 0.7),
+     xlab = paste("PCoA 1 (", explainvar1, "%)", sep = ""),
+     ylab = paste("PCoA 2 (", explainvar2, "%)", sep = ""),
+     pch = 16, cex = 2.0, type = "n", cex.lab = 1.5,
+     cex.axis = 1.2, axes = FALSE
+     )
+
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
+
+points(gummy.pcoa$points[,1], gummy.pcoa$points[,2],
+       pch = 19, cex = 3, bg = "gray", col = "gray")
+text(gummy.pcoa$points[ ,1], gummy.pcoa$points[ ,2],
+     labels = row.names(gummy.pcoa$points))
+
+#creating factor of communities to test with PERMANOVA
+gummycommunities<- c(rep("A",4), rep("B",4))
+#permanova
+#adonis(gummy ~ gummycommunities,  method = "bray", permutations = 999)
+
+#want to see if there are indicator species of each community
+library(indicspecies)
+#species-site group associations
+indval <- multipatt(gummy, cluster = gummycommunities, func = "IndVal.g", control = how(nperm = 999))
+summary(indval)
+
+gummy.rel <- decostand(gummy, method = "total")
+phi <- multipatt(gummy.rel, cluster = gummycommunities, func = "r.g", control = how(nperm = 999))
+summary(phi)
+
 ```
 
 **Answer 3b - Plot:** With your analysis, create one (and only one, although it can have multiple panels) *publication-quality* figure.  
 
 ```{r}
+
 ```
 
 **Answer 3c - Interpret results:** Write an informative yet succinct (~5 sentences) caption that creates a "stand-alone" figure. Take a peek at figures and figure captions in a paper published in your favorite journal for inspiration.
+>I would like to try and make a cluster plot to demonstrate that community A and community B had few species that only appeared in each of the respective communities. I ran the species-site association to confirm that there were species that were indicative of each community, as the PCoA plot was little informative, creating clusters of the four sites within each community. 
 
 
 ## SUBMITTING YOUR ASSIGNMENT
